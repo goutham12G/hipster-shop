@@ -29,6 +29,27 @@ spec:
     spec:
       terminationGracePeriodSeconds: 5
       restartPolicy: Always
+      initContainers:
+      - command:
+        - /bin/sh
+        - -exc
+        - |
+          echo "Init container pinging frontend: ${FRONTEND_ADDR}..."
+          for i in $(seq 1 60); do
+            STATUSCODE=$(wget --server-response http://${FRONTEND_ADDR} 2>&1 | awk '/^  HTTP/{print $2}')
+            if test $STATUSCODE -eq 200; then
+                exit 0
+            else
+                echo "Front end not yet ready - Status code: ${STATUSCODE}"
+                sleep 1
+            fi
+          done
+          exit 1
+        name: frontend-check
+        image: busybox:latest
+        env:
+        - name: FRONTEND_ADDR
+          value: "frontend:80"
       containers:
       - name: main
         image: loadgenerator
